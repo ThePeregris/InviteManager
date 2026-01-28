@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: [|cff355E3BG|r]rupinho |cffFF8DA1Gestor de Amiguinhos|r
 ## Notes: Gestor de Grupo para Turtle WoW.
-## Author: Bannion & ThePeregris
-## Version: 1.12.1 Legado
+## Author: ThePeregris
+## Version: 1.11 (Final)
 ## SavedVariables: Grupinho_Config
 Grupinho.lua
