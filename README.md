@@ -1,80 +1,81 @@
-# FGA - Formação de Grupos Avançada
+# 🛡️ Grupinho - Gestor de Grupo Avançado
 
-O **FGA** é um utilitário de gestão de grupos e raids desenvolvido especificamente para o **Turtle WoW (Client 1.12.1)**. Ele automatiza convites, ciclos de reconvite (Refresh) e verificações de prontidão com uma interface visual simples e intuitiva.
-
-## 🚀 Como Abrir
-
-Para mostrar ou esconder a central de comando, utiliza um dos seguintes comandos no chat:
-
-`/fga`  ou  `/apf`
+O **Grupinho** é a ferramenta de gestão de raids para o **Turtle WoW (1.12.1)**. Desenhado para líderes que precisam de precisão cirúrgica no "recall" do grupo e organização visual de prontidão.  
 
 ---
 
-## 🛠️ Funcionalidades do Painel
+## ⚡ Quickstart (Início Rápido)
 
-### 1. Lista de Alvos (EditBox & Painel Lateral)
+1. **Abrir:** Digita `/grupinho` no chat.  
+2. **Preparar:** Clica em **Capturar** para listar o teu grupo atual ou cola os nomes na caixa.
+3. **Ajustar:** Desliza o **Slider** para definir o tempo de convite (ex: 45s).
+4. **Executar:** Clica em **Refresh Estratégico** para refazer o grupo com contagem automática.
+5. **Verificar:** Clica em **Pedir Ready Check** e observa quem fica **Verde** na lista lateral.
 
-No topo da janela, existe uma caixa de texto onde podes inserir os nomes dos jogadores.
+---
 
-* **Formato:** Aceita nomes separados por espaços, vírgulas ou ponto e vírgula.
-* **Painel Lateral:** À direita, verás uma lista formatada em tempo real que mostra quem são os "alvos" atuais e a contagem total de jogadores.
+## 🚀 Comandos de Acesso
 
-### 2. Botão: Capturar
+Para mostrar ou esconder a central de comando:  
 
-Lê instantaneamente todos os membros da tua **Party** ou **Raid** atual.
+`/grupinho`
 
-* Os nomes são inseridos automaticamente na caixa de texto.
-* O addon ignora o teu próprio nome para evitar erros de convite.
+---
 
-### 3. Botão: Limpar
+## 🛠️ Explicação dos Botões e Controlos
 
-Esvazia a lista de nomes e limpa o painel lateral de uma só vez.
+### 🎚️ Configurações de Ambiente
 
-### 4. Botão: Formar Grupo
+* **Checkbutton [Usar Grito]:** * *Marcado:* A contagem regressiva será feita via `/yell` (público).
+* *Desmarcado:* A contagem será enviada apenas para o chat da **Raid** ou **Grupo** (privado).
 
-Inicia o processo de convite em massa baseado na lista de nomes.
 
-* **Auto-Raid:** Se a lista contiver mais de 5 nomes, o addon converte o grupo para Raid automaticamente.
+* **Slider de Tempo (30s - 55s):** * Define o momento exato do convite (). Toda a contagem sonora e de chat ajusta-se automaticamente a este valor.
 
-### 5. Botão: Refresh Estratégico (53s)
+### 📋 Gestão de Nomes
 
-Esta é a funcionalidade avançada para líderes de raid. Ao clicar, o addon executa um ciclo automatizado:
+* **Capturar:** Copia os nomes de todos os membros da raid/party atual para a lista.
+* **Limpar:** Apaga todos os nomes e reseta o status de prontidão.
+* **Formar Grupo:** Envia convites imediatos para a lista e converte para Raid se houver mais de 5 pessoas.
 
-* **Início:** Tu sais do grupo atual imediatamente.
-* **45 Segundos:** Um som de *Ready Check* (Ding) avisa-te que o ciclo está quase a terminar.
-* **47 Segundos:** Os convites são enviados e o addon grita no chat (`/yell`) "Reconvidando em: 6...".
-* **Contagem:** O addon faz uma contagem decrescente no chat de 5 até 1.
-* **53 Segundos:** O teu personagem grita "AVANTE!" e executa o emote `/charge`.
+### ⏳ O Ciclo de Refresh (Exemplo com 47s)
 
-### 6. Botão: Ready Check (Train Edition)
+Ao clicar em **Refresh Estratégico**, o ciclo inicia:
 
-Uma forma divertida e visual de saber quem está pronto.
+1. **Saída:** Tu sais do grupo atual.
+2. **T - 2s:** Som de *Ready Check* para te alertar.
+3. **Tempo T:** Envio automático de convites + Grito "6".
+4. **T + 1s a 5s:** Contagem regressiva visual no chat.
+5. **T + 6s:** Grito final "AVANTE!" + Emote de investida.
 
-* O addon pede ao grupo para usar o comando `/train`.
-* Sempre que um membro do grupo fizer o som do comboio, aparecerá uma confirmação verde **[OK]** no teu chat privado.
+### 🚂 Ready Check (Visual & Sonoro)
+
+* **Pedir Ready Check:** Limpa os status e pede ao grupo para usar o comando `/train`.
+* **Painel Lateral de Status:** * `[..] Nome` (Vermelho): Jogador ainda não confirmou.
+* `[OK] Nome` (Verde): Jogador já fez o som do comboio.
+
+* **Meu OK:** Faz o teu personagem executar o emote `/train` para confirmares a tua parte.
 
 ---
 
 ## 📂 Instalação Técnica
 
-Para que o addon funcione corretamente no Turtle WoW, a estrutura de pastas deve ser:
+Para o funcionamento correto, a estrutura deve ser rigorosa:
 
-1. Caminho: `World of Warcraft/Interface/AddOns/FGA/`
-2. Ficheiros necessários:
-* `FGA.toc` (Contém a linha `## SavedVariables: FGA_Config`)
-* `FGA.lua` (O código fonte do programa)
+1. **Pasta:** `World of Warcraft/Interface/AddOns/Grupinho/`
+2. **Ficheiro `Grupinho.toc`:** * Deve conter a linha: `## SavedVariables: Grupinho_Config`
+3. **Ficheiro `Grupinho.lua`:** * O código fonte revisado.
 
-
-
-> [!IMPORTANT]
-> Se a janela não aparecer, certifica-te de que ativaste a opção **"Load out of date AddOns"** no menu de AddOns na seleção de personagens.
+> [!CAUTION]
+> **Atenção:** Se mudares o nome da pasta, deves mudar o nome dos ficheiros `.toc` e `.lua` para serem idênticos, caso contrário o WoW não carregará o addon.
 
 ---
 
-## 💾 Memória de Posição
+## 💾 Persistência de Dados
 
-O FGA lembra-se de onde o deixaste. Podes arrastar a janela para qualquer canto do ecrã e, após um `/reload` ou *Logout*, ela aparecerá exatamente no mesmo sítio. Para fechar, basta clicar no **X** vermelho no canto superior.
+O addon utiliza a memória do servidor para guardar:
+* A posição exata da janela no teu ecrã.
+* O tempo definido no Slider.
+* A tua preferência de Grito (/y).
 
 ---
-
-**Comandante Bannion**, o manual está pronto para os teus oficiais! Precisas que eu adicione uma secção de "Resolução de Problemas" ou queres que eu crie um ícone pequeno que fique sempre no ecrã para abrir o painel sem precisar de digitar o comando?

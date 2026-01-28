@@ -1,0 +1,6 @@
+## Interface: 11200
+## Title: [|cff355E3BG|r]rupinho |cffDE3163Gestor de Amiguinhos|r
+## Author: Bannion
+## SavedVariables: Grupinho_Config
+
+Grupinho.lua
