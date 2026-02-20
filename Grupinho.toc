@@ -1,8 +1,0 @@
-## Interface: 11200
-## Title: InviteManager
-## Notes: Raid & Party Invite Manager with Queue and Ready Check
-## Author: Bannion & ThePeregris
-## Version: 1.0
-## SavedVariables: InviteManager_Config
-
-InviteManager.lua
