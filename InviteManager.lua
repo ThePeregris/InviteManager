@@ -222,14 +222,26 @@ end)
 -- SLASH COMMAND
 -- =========================
 SLASH_INVITEMANAGER1 = "/imap"
-SlashCmdList["INVITEMANAGER"] = function(msg)
+SLASH_INVITEMANAGER2 = "/invitemanager"
+
+SlashCmdList.INVITEMANAGER = function(msg)
+    msg = string.lower(msg or "")
+
     if msg == "invite" then
         InviteManager_StartInvite()
+
     elseif msg == "start" then
         InviteManager_StartProtocol()
+
     elseif msg == "reset" then
         InviteManager_Reset()
+
     else
-        if f:IsShown() then f:Hide() else f:Show() end
+        if InviteManagerFrame:IsShown() then
+            InviteManagerFrame:Hide()
+        else
+            InviteManagerFrame:Show()
+        end
     end
 end
+    
