@@ -1,137 +1,50 @@
 -- ==========================================================
--- ADDON: InviteManager
--- VERSION: 1.0 (Release)
--- AUTHORS: Bannion & ThePeregris
--- TARGET: Turtle WoW 1.12.1 / Lua 5.0
+-- ADDON: InviteManager (ex-Grupinho)
+-- VERSÃO: 1.0
+-- AUTOR: Bannion & ThePeregris(c)
+-- COMPATIBILIDADE: Turtle WoW / Vanilla 1.12.1
+-- PROPÓSITO: Dissolver completamente e reagrupar
 -- ==========================================================
 
--- =========================
--- SAVED CONFIG
--- =========================
 if not InviteManager_Config then InviteManager_Config = {} end
-if InviteManager_Config.useYell == nil then InviteManager_Config.useYell = false end
+if InviteManager_Config.useYell == nil then InviteManager_Config.useYell = true end
 if not InviteManager_Config.recallTime then InviteManager_Config.recallTime = 47 end
 
--- =========================
--- STATE MACHINE
--- =========================
-local STATE = "IDLE"          -- IDLE / COUNTDOWN / INVITING
-local timer = 0
-local steps = {}
-
--- =========================
--- DATA
--- =========================
-local InviteQueue = {}
-local inviteTicker = 0
 local readyList = {}
+local inviteQueue = {}
+local kickQueue = {}
 
--- =========================
--- UTIL
--- =========================
-local function IsLeader()
+local run = false
+local clk = nil
+local stp = {}
+
+local inviteTimer = 0
+local kickTimer = 0
+
+-- ==========================================================
+-- MASS KICK PREPARADO (REAL)
+-- ==========================================================
+local function PrepareMassKick()
+    kickQueue = {}
+
     if GetNumRaidMembers() > 0 then
-        return IsRaidLeader()
-    end
-    return UnitIsPartyLeader("player")
-end
-
-local function Msg(text)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00InviteManager:|r "..text)
-end
-
--- =========================
--- QUEUE SYSTEM
--- =========================
-local function Queue_Clear()
-    InviteQueue = {}
-end
-
-local function Queue_Fill(text)
-    local n
-    for n in string.gfind(text, "([^%s,;]+)") do
-        table.insert(InviteQueue, n)
-    end
-end
-
-local function Queue_Update(elapsed)
-    if table.getn(InviteQueue) == 0 then return end
-
-    inviteTicker = inviteTicker + elapsed
-    if inviteTicker >= 0.25 then
-        local name = table.remove(InviteQueue, 1)
-        InviteByName(name)
-        inviteTicker = 0
-    end
-end
-
--- =========================
--- GROUP HELPERS
--- =========================
-local function MassKick()
-    local i, n
-    if GetNumRaidMembers() > 0 then
-        for i=1,40 do
-            n = GetRaidRosterInfo(i)
+        for i = 1, 40 do
+            local n = GetRaidRosterInfo(i)
             if n and n ~= UnitName("player") then
-                UninviteByName(n)
+                table.insert(kickQueue, n)
             end
         end
     else
-        for i=1,4 do
-            n = UnitName("party"..i)
-            if n then UninviteByName(n) end
+        for i = 1, 4 do
+            local n = UnitName("party"..i)
+            if n then table.insert(kickQueue, n) end
         end
     end
 end
 
--- =========================
--- CORE ACTIONS
--- =========================
-function InviteManager_StartInvite()
-    if not IsLeader() then
-        Msg("Only the leader can invite.")
-        return
-    end
-    if STATE ~= "IDLE" then return end
-
-    Queue_Clear()
-    Queue_Fill(InviteManagerInput:GetText())
-    STATE = "INVITING"
-    Msg("Sending invites...")
-end
-
-function InviteManager_StartProtocol()
-    if not IsLeader() then
-        Msg("Only the leader can start protocol.")
-        return
-    end
-    if STATE ~= "IDLE" then return end
-
-    MassKick()
-    LeaveParty()
-
-    Queue_Clear()
-    readyList = {}
-    steps = {}
-    timer = 0
-
-    STATE = "COUNTDOWN"
-    Msg("Protocol started.")
-end
-
-function InviteManager_Reset()
-    STATE = "IDLE"
-    timer = 0
-    steps = {}
-    Queue_Clear()
-    readyList = {}
-    Msg("Reset complete.")
-end
-
--- =========================
--- UI
--- =========================
+-- ==========================================================
+-- JANELA PRINCIPAL
+-- ==========================================================
 local f = CreateFrame("Frame", "InviteManagerFrame", UIParent)
 f:SetWidth(200); f:SetHeight(520)
 f:SetPoint("CENTER", 0, 0)
@@ -141,107 +54,201 @@ f:SetBackdrop({
     tile = true, tileSize = 32, edgeSize = 32,
     insets = { left = 8, right = 8, top = 8, bottom = 8 }
 })
-f:SetMovable(true); f:EnableMouse(true)
+f:SetMovable(true)
+f:EnableMouse(true)
 f:RegisterForDrag("LeftButton")
 f:SetScript("OnDragStart", function() f:StartMoving() end)
 f:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
 f:Show()
 
 local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-title:SetPoint("TOP", 0, -14)
+title:SetPoint("TOP", 0, -15)
 title:SetText("InviteManager")
 
 local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", -2, -2)
+close:SetScript("OnClick", function() f:Hide() end)
 
+-- ==========================================================
+-- INPUT DE NOMES
+-- ==========================================================
 local eb = CreateFrame("EditBox", "InviteManagerInput", f, "InputBoxTemplate")
 eb:SetWidth(160); eb:SetHeight(30)
 eb:SetPoint("TOP", 0, -45)
 eb:SetAutoFocus(false)
 
-local bInvite = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-bInvite:SetWidth(170); bInvite:SetHeight(30)
-bInvite:SetPoint("TOP", 0, -90)
-bInvite:SetText("Invite")
-bInvite:SetScript("OnClick", InviteManager_StartInvite)
+-- Capturar grupo atual
+local bCap = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+bCap:SetWidth(80); bCap:SetHeight(22)
+bCap:SetPoint("TOPLEFT", 15, -85)
+bCap:SetText("Capturar")
+bCap:SetScript("OnClick", function()
+    local s = ""
+    if GetNumRaidMembers() > 0 then
+        for i=1,40 do
+            local n = GetRaidRosterInfo(i)
+            if n and n ~= UnitName("player") then s = s .. n .. " " end
+        end
+    else
+        for i=1,4 do
+            local n = UnitName("party"..i)
+            if n then s = s .. n .. " " end
+        end
+    end
+    eb:SetText(s)
+end)
 
-local bStart = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-bStart:SetWidth(170); bStart:SetHeight(30)
-bStart:SetPoint("TOP", 0, -130)
-bStart:SetText("Start Protocol")
-bStart:SetScript("OnClick", InviteManager_StartProtocol)
+local bClear = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+bClear:SetWidth(80); bClear:SetHeight(22)
+bClear:SetPoint("TOPRIGHT", -15, -85)
+bClear:SetText("Limpar")
+bClear:SetScript("OnClick", function() eb:SetText("") end)
 
-local bReset = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-bReset:SetWidth(170); bReset:SetHeight(30)
-bReset:SetPoint("TOP", 0, -170)
-bReset:SetText("Reset")
-bReset:SetScript("OnClick", InviteManager_Reset)
+-- ==========================================================
+-- FORMAR GRUPO (COM FILA)
+-- ==========================================================
+local bForm = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+bForm:SetWidth(170); bForm:SetHeight(30)
+bForm:SetPoint("TOP", 0, -125)
+bForm:SetText("Formar Grupo")
+bForm:SetScript("OnClick", function()
+    inviteQueue = {}
+    for n in string.gfind(eb:GetText(), "([^%s,;]+)") do
+        table.insert(inviteQueue, n)
+    end
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00InviteManager:|r Enviando convites...")
+end)
 
--- =========================
--- ONUPDATE (FSM)
--- =========================
+-- ==========================================================
+-- READY CHECK
+-- ==========================================================
+local bReady = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+bReady:SetWidth(170); bReady:SetHeight(30)
+bReady:SetPoint("TOP", 0, -165)
+bReady:SetText("Todos Prontos?")
+bReady:SetScript("OnClick", function()
+    readyList = {}
+    local chan = (GetNumRaidMembers() > 0) and "RAID" or "PARTY"
+    SendChatMessage("READY CHECK: usem /train", chan)
+end)
+
+-- ==========================================================
+-- INICIAR PROTOCOLO (DISSOLVE REAL)
+-- ==========================================================
+local bProto = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+bProto:SetWidth(170); bProto:SetHeight(30)
+bProto:SetPoint("TOP", 0, -205)
+bProto:SetText("Iniciar Protocolo")
+bProto:SetScript("OnClick", function()
+    PrepareMassKick()
+    inviteQueue = {}
+    readyList = {}
+    run = true
+    clk = 0
+    stp = {}
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff0000InviteManager:|r Protocolo iniciado.")
+end)
+
+-- ==========================================================
+-- SLIDER
+-- ==========================================================
+local sText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+sText:SetPoint("TOP", 0, -245)
+
+local slider = CreateFrame("Slider", "InviteManagerSlider", f, "OptionsSliderTemplate")
+slider:SetPoint("TOP", 0, -265)
+slider:SetWidth(160)
+slider:SetMinMaxValues(30, 55)
+slider:SetValueStep(1)
+slider:SetScript("OnValueChanged", function()
+    local v = slider:GetValue()
+    InviteManager_Config.recallTime = v
+    sText:SetText("Reconvite em: "..v.."s")
+end)
+
+-- ==========================================================
+-- CHECKBOX YELL
+-- ==========================================================
+local cb = CreateFrame("CheckButton", "InviteManagerCheckYell", f, "UICheckButtonTemplate")
+cb:SetPoint("TOPLEFT", 20, -310)
+getglobal(cb:GetName().."Text"):SetText("Contagem Gritada")
+cb:SetScript("OnClick", function()
+    InviteManager_Config.useYell = InviteManagerCheckYell:GetChecked()
+end)
+
+-- ==========================================================
+-- LOOP CENTRAL
+-- ==========================================================
 f:SetScript("OnUpdate", function()
-    local e = arg1
+    -- Kick queue (REAL dissolve)
+    if table.getn(kickQueue) > 0 then
+        kickTimer = kickTimer + arg1
+        if kickTimer >= 0.15 then
+            UninviteByName(table.remove(kickQueue, 1))
+            kickTimer = 0
+        end
+        if table.getn(kickQueue) == 0 then LeaveParty() end
+    end
 
-    if STATE == "INVITING" then
-        Queue_Update(e)
-        if table.getn(InviteQueue) == 0 then
-            if GetNumPartyMembers() > 0 and GetNumRaidMembers() == 0 then
-                ConvertToRaid()
+    -- Invite queue
+    if table.getn(inviteQueue) > 0 then
+        inviteTimer = inviteTimer + arg1
+        if inviteTimer >= 0.2 then
+            InviteByName(table.remove(inviteQueue, 1))
+            inviteTimer = 0
+        end
+    end
+
+    -- Timer do protocolo
+    if run and clk then
+        clk = clk + arg1
+        local t = InviteManager_Config.recallTime
+        local chan = InviteManager_Config.useYell and "YELL"
+            or ((GetNumRaidMembers() > 0) and "RAID" or "PARTY")
+
+        if clk >= t and not stp.fill then
+            for n in string.gfind(eb:GetText(), "([^%s,;]+)") do
+                table.insert(inviteQueue, n)
             end
-            STATE = "IDLE"
+            SendChatMessage("Reconvidando em 6...", chan)
+            stp.fill = true
         end
 
-    elseif STATE == "COUNTDOWN" then
-        timer = timer + e
-        local t = InviteManager_Config.recallTime
-        local chan = InviteManager_Config.useYell and "YELL" or ((GetNumRaidMembers() > 0) and "RAID" or "PARTY")
+        for i=1,5 do
+            if clk >= (t+i) and not stp[i] then
+                SendChatMessage((6-i).."...", chan)
+                stp[i] = true
+            end
+        end
 
-        if timer >= t and not steps.fire then
-            Queue_Fill(InviteManagerInput:GetText())
-            SendChatMessage("Re-inviting...", chan)
-            STATE = "INVITING"
-            steps.fire = true
+        if clk >= (t+6) then
+            SendChatMessage("AVANTE!", chan)
+            run = false
+            clk = nil
         end
     end
 end)
 
--- =========================
--- READY CHECK
--- =========================
+-- ==========================================================
+-- EVENTOS
+-- ==========================================================
+f:RegisterEvent("VARIABLES_LOADED")
 f:RegisterEvent("CHAT_MSG_TEXT_EMOTE")
 f:SetScript("OnEvent", function()
-    if event == "CHAT_MSG_TEXT_EMOTE" then
-        if arg1 and string.find(arg1, "train") then
+    if event == "VARIABLES_LOADED" then
+        slider:SetValue(InviteManager_Config.recallTime)
+        InviteManagerCheckYell:SetChecked(InviteManager_Config.useYell)
+    elseif event == "CHAT_MSG_TEXT_EMOTE" then
+        if arg1 and (string.find(arg1, "train") or string.find(arg1, "comboio")) then
             readyList[arg2] = true
         end
     end
 end)
 
--- =========================
+-- ==========================================================
 -- SLASH COMMAND
--- =========================
+-- ==========================================================
 SLASH_INVITEMANAGER1 = "/imap"
-SLASH_INVITEMANAGER2 = "/invitemanager"
-
-SlashCmdList.INVITEMANAGER = function(msg)
-    msg = string.lower(msg or "")
-
-    if msg == "invite" then
-        InviteManager_StartInvite()
-
-    elseif msg == "start" then
-        InviteManager_StartProtocol()
-
-    elseif msg == "reset" then
-        InviteManager_Reset()
-
-    else
-        if InviteManagerFrame:IsShown() then
-            InviteManagerFrame:Hide()
-        else
-            InviteManagerFrame:Show()
-        end
-    end
+SlashCmdList["INVITEMANAGER"] = function()
+    if f:IsShown() then f:Hide() else f:Show() end
 end
-    
